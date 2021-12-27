@@ -24,14 +24,14 @@ app.post("/link", async (req, res) => {
     res.send({returnUrl})
 });
 
-app.get("/:linkId", async (req, res) => {
+app.get("/link/:linkId", async (req, res) => {
     const linkData = await findLink(req.params.linkId)
     const redirectUrl = redirectDB(req, linkData)
     res.redirect(301, redirectUrl)
 });
 
 app.get("/test", async (req, res) => {
-    res.code(200).send('Tests')
+    res.send('Tests')
 });
 
 function isApple(ua) {
