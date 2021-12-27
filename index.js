@@ -30,6 +30,9 @@ app.get("/:linkId", async (req, res) => {
     res.redirect(301, redirectUrl)
 });
 
+app.get("/test", async (req, res) => {
+    res.code(200).send('Tests')
+});
 
 function isApple(ua) {
     return ua.isiPad || ua.isiPod || ua.isiPhone || ua.isiPhoneNative
