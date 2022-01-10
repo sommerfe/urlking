@@ -1,23 +1,23 @@
-const express = require("express");
-const useragent = require('express-useragent');
-const bodyParser = require("body-parser");
-const app = express();
-const ObjectId = require('mongodb').ObjectId;
-const { MongoClient } = require('mongodb');
+const express = require("express")
+const useragent = require('express-useragent')
+const bodyParser = require("body-parser")
+const app = express()
+const ObjectId = require('mongodb').ObjectId
+const { MongoClient } = require('mongodb')
 const cors = require('cors')
 require('dotenv').config()
-const client = new MongoClient(process.env.DB_URL);
+const client = new MongoClient(process.env.DB_URL)
 
 const port = process.env.PORT || "8080";
 app.listen(port, () => {
-    console.log(`Listening to requests on http://localhost:${port}`);
+    console.log(`Listening to requests on http://localhost:${port}`)
 });
 app.use(cors())
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }))
+app.use(bodyParser.json())
+
 app.get("/", (req, res) => {
-    const redirectUrl = redirect(req)
-    res.redirect(301, redirectUrl)
+    res.send('Tests')
 });
 
 app.post("/link", async (req, res) => {
@@ -26,7 +26,7 @@ app.post("/link", async (req, res) => {
     res.send({returnUrl})
 });
 
-app.get("/link/:linkId", async (req, res) => {
+app.get("/:linkId", async (req, res) => {
     try {
         const linkData = await findLink(req.params.linkId)
         const redirectUrl = redirectDB(req, linkData)
@@ -34,10 +34,6 @@ app.get("/link/:linkId", async (req, res) => {
     } catch (error) {
         res.send('Error')
     }
-});
-
-app.get("/test", async (req, res) => {
-    res.send('Tests')
 });
 
 function isApple(ua) {
@@ -53,7 +49,12 @@ async function insertLink(insertDoc) {
     await client.connect();
     const db = client.db(process.env.DB_NAME)
     const collection = db.collection(process.env.DB_COLLECTION)
-    const insertResult = await collection.insertOne(insertDoc)
+    const linkObject = {
+        ...insertDoc,
+        visited: 0,
+        createdAt: new Date()
+    }
+    const insertResult = await collection.insertOne(linkObject)
     return insertResult.insertedId.toString()
 }
 
@@ -62,39 +63,26 @@ async function findLink(linkId) {
     const db = client.db(process.env.DB_NAME)
     const collection = db.collection(process.env.DB_COLLECTION)
     const result = await collection.findOne({ "_id": ObjectId(linkId) })
-    return result
-}
-
-function redirect(req) {
-    var source = req.headers['user-agent']
-    var ua = useragent.parse(source);
-    var { appleUrl, androidUrl, windowsUrl, elseUrl } = req.query
-    let redirectUrl = ''
-    if (ua.isWindows) {
-        redirectUrl = windowsUrl ?? elseUrl ?? 'https://microsoft.com'
-    } else if (isApple(ua)) {
-        redirectUrl = appleUrl ?? elseUrl ?? 'https://apple.com'
-    } else if (isAndroid(ua)) {
-        redirectUrl = androidUrl ?? elseUrl ?? 'https://google.com'
-    } else {
-        redirectUrl = elseUrl ?? windowsUrl ?? androidUrl ?? appleUrl ?? 'https://microsoft.com'
+    if(result) {
+        await collection.updateOne(
+            { "_id": ObjectId(linkId) },
+            { $inc: { visited: 1 }, $set: { lastVisited: new Date() } }
+        )
     }
-    return redirectUrl
+    return result
 }
 
 function redirectDB(req, linkData) {
     var source = req.headers['user-agent']
     var ua = useragent.parse(source);
-    var { appleUrl, androidUrl, windowsUrl, elseUrl } = linkData
+    var { appleUrl, androidUrl, otherUrl } = linkData
     let redirectUrl = ''
-    if (ua.isWindows) {
-        redirectUrl = windowsUrl ?? elseUrl ?? 'https://microsoft.com'
-    } else if (isApple(ua)) {
-        redirectUrl = appleUrl ?? elseUrl ?? 'https://apple.com'
+    if (isApple(ua)) {
+        redirectUrl = appleUrl ?? otherUrl ?? androidUrl ?? 'https://apple.com'
     } else if (isAndroid(ua)) {
-        redirectUrl = androidUrl ?? elseUrl ?? 'https://google.com'
+        redirectUrl = androidUrl ?? otherUrl ?? appleUrl ?? 'https://google.com'
     } else {
-        redirectUrl = elseUrl ?? windowsUrl ?? androidUrl ?? appleUrl ?? 'https://microsoft.com'
+        redirectUrl = otherUrl ?? androidUrl ??  appleUrl ??'https://microsoft.com'
     }
     return redirectUrl
 }
