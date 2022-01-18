@@ -5,8 +5,19 @@ const app = express()
 const ObjectId = require('mongodb').ObjectId
 const { MongoClient } = require('mongodb')
 const cors = require('cors')
+const mysql = require('mysql');
+const util = require('util')
 require('dotenv').config()
 const client = new MongoClient(process.env.DB_URL)
+
+var connection = mysql.createConnection({
+    host     : process.env.MSQL_HOST,
+    port     : process.env.MSQL_PORT,
+    user     : process.env.MSQL_USER,
+    password : process.env.MSQL_PW,
+    database : process.env.MSQL_DB
+})
+const query = util.promisify(connection.query)
 
 const port = process.env.PORT || "8080";
 app.listen(port, () => {
@@ -69,6 +80,22 @@ async function findLink(linkId) {
             { $inc: { visited: 1 }, $set: { lastVisited: new Date() } }
         )
     }
+    return result
+}
+
+async function findLinkMysql(linkId) {
+    const sql = `SELECT * FROM links WHERE id = ${linkId}`
+    const result = await query(sql)
+    if (result) {
+        const sql = `UPDATE links SET visited = visited + 1, lastVisited = ${connection.escape(new Date())} WHERE id = ${linkId}`
+        await query(sql)
+    }
+    return result
+}
+
+async function insertLinkMysql(insertDoc) {
+    const sql = `INSERT INTO links (url, appleUrl, androidUrl, otherUrl) VALUES ('${insertDoc.url}', '${insertDoc.appleUrl}', '${insertDoc.androidUrl}', '${insertDoc.otherUrl}')`
+    const result = await query(sql)
     return result
 }
 

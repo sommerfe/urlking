@@ -17,6 +17,7 @@
     "express": "^4.17.1",
     "express-useragent": "^1.0.15",
     "mongodb": "^4.2.0",
+    "mysql": "^2.18.1",
     "nodemon": "^2.0.15"
   }
 }
